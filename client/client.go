@@ -55,7 +55,7 @@ func ConnectToServer() {
 	log.Printf("client %s: Attempts to dial on port %s\n", *clientsName, *serverPort)
 	conn, err := grpc.DialContext(timeContext, fmt.Sprintf(":%s", *serverPort), opts...)
 	if err != nil {
-		log.Printf("Fail to Dial : %v", err)
+		log.Fatalf("Fail to Dial : %v", err)
 		return
 	}
 
