@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -19,10 +18,10 @@ import (
 
 type Server struct {
 	gRPC.UnimplementedTemplateServer        // You need this line if you have a server
-	name                                    string // Not required but useful if you want to name your server
-	port                                    string // Not required but useful if your server needs to know what port it's listening to
+	name                             string // Not required but useful if you want to name your server
+	port                             string // Not required but useful if your server needs to know what port it's listening to
 
-	mutex          sync.Mutex // used to lock the server to avoid race conditions.
+	mutex sync.Mutex // used to lock the server to avoid race conditions.
 }
 
 // flags are used to get arguments from the terminal. Flags take a value, a default value and a description of the flag.
@@ -64,8 +63,8 @@ func launchServer() {
 
 	// makes a new server instance using the name and port from the flags.
 	server := &Server{
-		name:           *serverName,
-		port:           *port,
+		name: *serverName,
+		port: *port,
 	}
 
 	gRPC.RegisterTemplateServer(grpcServer, server) //Registers the server to the gRPC server.
@@ -78,16 +77,7 @@ func launchServer() {
 	// code here is unreachable because grpcServer.Serve occupies the current thread.
 }
 
-// The method format can be found in the pb.go file. If the format is wrong, the server type will give an error.
-func (s *Server) RequestTime(ctx context.Context, actualTime *gRPC.TimeRequest) (*gRPC.ChristianTime, error) {
-	// locks the server ensuring no one else can request the value at the same time.
-	// and unlocks the server when the method is done.
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	
-	
-	return &gRPC.ChristianTime{ActualTime: time.Now().Local().UnixMilli(), Variation: 0}, nil
+func notifyAll() {
 }
 
 // sets the logger to use a log.txt file instead of the console

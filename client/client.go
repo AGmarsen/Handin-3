@@ -29,9 +29,6 @@ func main() {
 
 	fmt.Println("--- CLIENT APP ---")
 
-	//log to file instead of console
-	//setLog()
-
 	//connect to server and close the connection when program closes
 	fmt.Println("--- join Server ---")
 	ConnectToServer()
@@ -71,7 +68,7 @@ func ConnectToServer() {
 
 func parseInput() {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Type \"time\" to get server time")
+	fmt.Println("Welcome to the chat!")
 	fmt.Println("--------------------")
 
 	//Infinite loop to listen for clients input.
@@ -91,37 +88,22 @@ func parseInput() {
 		}
 
 		//Convert string to int64, return error if the int is larger than 32bit or not a number
-		if input == "time" && err == nil {
-			requestTime()
-		} else if err != nil {
-			panic(err)
+		if err == nil {
+			//send(input)
 		} else {
-			fmt.Println("Sorry, I don't understand..?")
+			panic(err)
 		}
 	}
 }
 
-func requestTime() {
-	//Make gRPC call to server with amount, and recieve acknowlegdement back.
-	ack, err := server.RequestTime(context.Background(), &gRPC.TimeRequest{TimeStamp: time.Now().UnixMilli()})
-	if err != nil {
-		log.Printf("Client %s: no response from the server, attempting to reconnect", *clientsName)
-		log.Println(err)
-	}
-	fmt.Println(ack)
+func join() {
+
+}
+func send() {
+
 }
 
 // Function which returns a true boolean if the connection to the server is ready, and false if it's not.
 func conReady(s gRPC.TemplateClient) bool {
 	return ServerConn.GetState().String() == "READY"
-}
-
-// sets the logger to use a log.txt file instead of the console
-func setLog() {
-	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	defer f.Close()
-	log.SetOutput(f)
 }

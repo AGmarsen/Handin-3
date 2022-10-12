@@ -12,6 +12,19 @@ package proto;
 // you can call it whatever you want
 service Template
 {
-    
+    rpc join (Empty) returns (Lamport);
+    rpc leave (Lamport) returns (Empty);
+    rpc send (Lamport) returns (Empty);
+    rpc notifyAll (Lamport) returns (Empty);
+    rpc receive (Lamport) returns (Empty);
+}
+
+message Lamport {
+    int32 clock = 1;
+    string id = 2;
+    string content = 3;
+}
+
+message Empty {
 
 }
