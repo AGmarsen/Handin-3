@@ -23,6 +23,9 @@ var serverPort = flag.String("server", "5400", "Tcp server")
 var server gRPC.TemplateClient  //the server
 var ServerConn *grpc.ClientConn //the server connection
 
+var clock = 0
+var id = ""
+
 func main() {
 	//parse flag/arguments
 	flag.Parse()
@@ -33,6 +36,8 @@ func main() {
 	fmt.Println("--- join Server ---")
 	ConnectToServer()
 	defer ServerConn.Close()
+
+	joinServer()
 
 	//start the biding
 	parseInput()
@@ -96,8 +101,13 @@ func parseInput() {
 	}
 }
 
-func join() {
-
+func joinServer() {
+	response, err := server.Join(context.Background(), &gRPC.Lamport{Id: id, Clock: int32(clock), Content: "Hi, can I join?"})
+	if err != nil {
+		log.Printf("%v", err)
+	} else if response.Id == "" {
+		log.Print(response.Content)
+	}
 }
 func send() {
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -20,7 +21,8 @@ type Server struct {
 	gRPC.UnimplementedTemplateServer        // You need this line if you have a server
 	name                             string // Not required but useful if you want to name your server
 	port                             string // Not required but useful if your server needs to know what port it's listening to
-
+	maxId int32
+	clock int32
 	mutex sync.Mutex // used to lock the server to avoid race conditions.
 }
 
@@ -28,6 +30,7 @@ type Server struct {
 // to use a flag then just add it as an argument when running the program.
 var serverName = flag.String("name", "default", "Senders name") // set with "-name <name>" in terminal
 var port = flag.String("port", "5400", "Server port")           // set with "-port <port>" in terminal
+var idArray = []string {"A", "B", "C", "D", "E", "F", "G"};
 
 func main() {
 
@@ -65,6 +68,8 @@ func launchServer() {
 	server := &Server{
 		name: *serverName,
 		port: *port,
+		maxId: -1,
+		clock: 0,
 	}
 
 	gRPC.RegisterTemplateServer(grpcServer, server) //Registers the server to the gRPC server.
@@ -75,6 +80,18 @@ func launchServer() {
 		log.Fatalf("failed to serve %v", err)
 	}
 	// code here is unreachable because grpcServer.Serve occupies the current thread.
+}
+
+func (s *Server) Join(ctx context.Context, joinrequest *gRPC.Empty) (*gRPC.Lamport, error) {
+	s.mutex.Lock()
+	s.maxId++;
+	
+	giveId := s.maxId;
+	if int(giveId) > len(idArray) {
+		
+	}
+	defer s.mutex.Unlock()
+	return &gRPC.Lamport{Id: "", Clock: s.clock, Content: "invalid username"}, nil
 }
 
 func notifyAll() {
