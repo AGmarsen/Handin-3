@@ -21,16 +21,16 @@ type Server struct {
 	gRPC.UnimplementedTemplateServer        // You need this line if you have a server
 	name                             string // Not required but useful if you want to name your server
 	port                             string // Not required but useful if your server needs to know what port it's listening to
-	maxId int32
-	clock int32
-	mutex sync.Mutex // used to lock the server to avoid race conditions.
+	maxId                            int32
+	clock                            int32
+	mutex                            sync.Mutex // used to lock the server to avoid race conditions.
 }
 
 // flags are used to get arguments from the terminal. Flags take a value, a default value and a description of the flag.
 // to use a flag then just add it as an argument when running the program.
 var serverName = flag.String("name", "default", "Senders name") // set with "-name <name>" in terminal
 var port = flag.String("port", "5400", "Server port")           // set with "-port <port>" in terminal
-var idArray = []string {"A", "B", "C", "D", "E", "F", "G"};
+var idArray = []string{"A", "B", "C", "D", "E", "F", "G"}
 
 func main() {
 
@@ -66,8 +66,8 @@ func launchServer() {
 
 	// makes a new server instance using the name and port from the flags.
 	server := &Server{
-		name: *serverName,
-		port: *port,
+		name:  *serverName,
+		port:  *port,
 		maxId: -1,
 		clock: 0,
 	}
@@ -84,11 +84,11 @@ func launchServer() {
 
 func (s *Server) Join(ctx context.Context, joinrequest *gRPC.Empty) (*gRPC.Lamport, error) {
 	s.mutex.Lock()
-	s.maxId++;
-	
-	giveId := s.maxId;
+	s.maxId++
+
+	giveId := s.maxId
 	if int(giveId) > len(idArray) {
-		
+
 	}
 	defer s.mutex.Unlock()
 	return &gRPC.Lamport{Id: "", Clock: s.clock, Content: "invalid username"}, nil
@@ -111,4 +111,8 @@ func setLog() {
 	}
 	defer f.Close()
 	log.SetOutput(f)
+}
+
+func updateClock() {
+
 }

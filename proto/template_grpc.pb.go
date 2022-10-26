@@ -18,11 +18,9 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TemplateClient interface {
-	Join(ctx context.Context, in *Lamport, opts ...grpc.CallOption) (*Lamport, error)
-	Leave(ctx context.Context, in *Lamport, opts ...grpc.CallOption) (*Empty, error)
+	Join(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Lamport, error)
 	Send(ctx context.Context, in *Lamport, opts ...grpc.CallOption) (*Empty, error)
 	NotifyAll(ctx context.Context, in *Lamport, opts ...grpc.CallOption) (*Empty, error)
-	Receive(ctx context.Context, in *Lamport, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type templateClient struct {
@@ -33,18 +31,9 @@ func NewTemplateClient(cc grpc.ClientConnInterface) TemplateClient {
 	return &templateClient{cc}
 }
 
-func (c *templateClient) Join(ctx context.Context, in *Lamport, opts ...grpc.CallOption) (*Lamport, error) {
+func (c *templateClient) Join(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Lamport, error) {
 	out := new(Lamport)
 	err := c.cc.Invoke(ctx, "/proto.Template/Join", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *templateClient) Leave(ctx context.Context, in *Lamport, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/proto.Template/Leave", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -69,24 +58,13 @@ func (c *templateClient) NotifyAll(ctx context.Context, in *Lamport, opts ...grp
 	return out, nil
 }
 
-func (c *templateClient) Receive(ctx context.Context, in *Lamport, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/proto.Template/Receive", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // TemplateServer is the server API for Template service.
 // All implementations must embed UnimplementedTemplateServer
 // for forward compatibility
 type TemplateServer interface {
-	Join(context.Context, *Lamport) (*Lamport, error)
-	Leave(context.Context, *Lamport) (*Empty, error)
+	Join(context.Context, *Empty) (*Lamport, error)
 	Send(context.Context, *Lamport) (*Empty, error)
 	NotifyAll(context.Context, *Lamport) (*Empty, error)
-	Receive(context.Context, *Lamport) (*Empty, error)
 	mustEmbedUnimplementedTemplateServer()
 }
 
@@ -94,20 +72,14 @@ type TemplateServer interface {
 type UnimplementedTemplateServer struct {
 }
 
-func (UnimplementedTemplateServer) Join(context.Context, *Lamport) (*Lamport, error) {
+func (UnimplementedTemplateServer) Join(context.Context, *Empty) (*Lamport, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Join not implemented")
-}
-func (UnimplementedTemplateServer) Leave(context.Context, *Lamport) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Leave not implemented")
 }
 func (UnimplementedTemplateServer) Send(context.Context, *Lamport) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Send not implemented")
 }
 func (UnimplementedTemplateServer) NotifyAll(context.Context, *Lamport) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NotifyAll not implemented")
-}
-func (UnimplementedTemplateServer) Receive(context.Context, *Lamport) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Receive not implemented")
 }
 func (UnimplementedTemplateServer) mustEmbedUnimplementedTemplateServer() {}
 
@@ -123,7 +95,7 @@ func RegisterTemplateServer(s grpc.ServiceRegistrar, srv TemplateServer) {
 }
 
 func _Template_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Lamport)
+	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -135,25 +107,7 @@ func _Template_Join_Handler(srv interface{}, ctx context.Context, dec func(inter
 		FullMethod: "/proto.Template/Join",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TemplateServer).Join(ctx, req.(*Lamport))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Template_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Lamport)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TemplateServer).Leave(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Template/Leave",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TemplateServer).Leave(ctx, req.(*Lamport))
+		return srv.(TemplateServer).Join(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -194,24 +148,6 @@ func _Template_NotifyAll_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Template_Receive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Lamport)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TemplateServer).Receive(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Template/Receive",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TemplateServer).Receive(ctx, req.(*Lamport))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // Template_ServiceDesc is the grpc.ServiceDesc for Template service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -224,20 +160,12 @@ var Template_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Template_Join_Handler,
 		},
 		{
-			MethodName: "Leave",
-			Handler:    _Template_Leave_Handler,
-		},
-		{
 			MethodName: "Send",
 			Handler:    _Template_Send_Handler,
 		},
 		{
 			MethodName: "NotifyAll",
 			Handler:    _Template_NotifyAll_Handler,
-		},
-		{
-			MethodName: "Receive",
-			Handler:    _Template_Receive_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

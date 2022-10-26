@@ -102,13 +102,14 @@ func parseInput() {
 }
 
 func joinServer() {
-	response, err := server.Join(context.Background(), &gRPC.Lamport{Id: id, Clock: int32(clock), Content: "Hi, can I join?"})
+	response, err := server.Join(context.Background(), &gRPC.Empty{})
 	if err != nil {
 		log.Printf("%v", err)
 	} else if response.Id == "" {
 		log.Print(response.Content)
 	}
 }
+
 func send() {
 
 }
@@ -116,4 +117,8 @@ func send() {
 // Function which returns a true boolean if the connection to the server is ready, and false if it's not.
 func conReady(s gRPC.TemplateClient) bool {
 	return ServerConn.GetState().String() == "READY"
+}
+
+func updateClock() {
+
 }
