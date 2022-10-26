@@ -12,14 +12,14 @@ package proto;
 // you can call it whatever you want
 service Template
 {
-    rpc Join (Empty) returns (Lamport);
-    rpc Send (Lamport) returns (Empty);
-    rpc NotifyAll (Lamport) returns (Empty);
+    rpc Join (Empty) returns (Lamport); //client request to join server. Server responds with an id or denial.
+    rpc Subscribe (stream Lamport) returns (stream Lamport); //client subscribes to server. 
+    rpc Send (Lamport) returns (Empty); //client sends message to server. Server notifies subscribers.
 }
 
 message Lamport {
-    int32 clock = 1;
-    string id = 2;
+    string id = 1;
+    int32 clock = 2;
     string content = 3;
 }
 

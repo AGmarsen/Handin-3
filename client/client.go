@@ -5,9 +5,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	gRPC "github.com/AGmarsen/Handin-3/proto"
@@ -23,8 +25,9 @@ var serverPort = flag.String("server", "5400", "Tcp server")
 var server gRPC.TemplateClient  //the server
 var ServerConn *grpc.ClientConn //the server connection
 
-var clock = 0
+var clock = int32(0)
 var id = ""
+var mutex *sync.Mutex = &sync.Mutex{}
 
 func main() {
 	//parse flag/arguments
@@ -38,6 +41,7 @@ func main() {
 	defer ServerConn.Close()
 
 	joinServer()
+	go subscribe()
 
 	//start the biding
 	parseInput()
@@ -94,9 +98,9 @@ func parseInput() {
 
 		//Convert string to int64, return error if the int is larger than 32bit or not a number
 		if err == nil {
-			//send(input)
+			send(input)
 		} else {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 }
@@ -104,14 +108,46 @@ func parseInput() {
 func joinServer() {
 	response, err := server.Join(context.Background(), &gRPC.Empty{})
 	if err != nil {
-		log.Printf("%v", err)
-	} else if response.Id == "" {
-		log.Print(response.Content)
+		log.Fatalf("%v", err)
+		return
+	}
+	if response.Id == "" {
+		log.Fatal(response.Content)
+	} else {
+		id = response.Id
+		print(response)
 	}
 }
 
-func send() {
+//https://github.com/itisbsg/grpc-push-notif/blob/master/client/client.go
+func subscribe() {
+	mutex.Lock()
+	clock++
+	mutex.Unlock()
+	stream, err := server.Subscribe(context.Background()) //open stream
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	stream.Send(&gRPC.Lamport{Id: id, Clock: clock})
+	for {
+		rec, er := stream.Recv()
+		if er == io.EOF {
+			break
+		}
+		if er != nil {
+			log.Fatalf("%v", er)
+		}
+		print(rec)
+	}
+}
 
+func send(message string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	_, err := server.Send(context.Background(), &gRPC.Lamport{Id: id, Clock: int32(clock) + 1, Content: message})
+	if err != nil {
+		log.Printf("%v", err)
+	}
 }
 
 // Function which returns a true boolean if the connection to the server is ready, and false if it's not.
@@ -119,6 +155,16 @@ func conReady(s gRPC.TemplateClient) bool {
 	return ServerConn.GetState().String() == "READY"
 }
 
-func updateClock() {
+func print(msg *gRPC.Lamport) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	clock = max (msg.Clock, clock) + 1
+	log.Printf("%s (%s, %d)\n", msg.Content, id, clock)
+}
 
+func max(a int32, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -24,6 +25,7 @@ type Server struct {
 	maxId                            int32
 	clock                            int32
 	mutex                            sync.Mutex // used to lock the server to avoid race conditions.
+	subStrm                          map[string]gRPC.Template_SubscribeServer
 }
 
 // flags are used to get arguments from the terminal. Flags take a value, a default value and a description of the flag.
@@ -66,10 +68,11 @@ func launchServer() {
 
 	// makes a new server instance using the name and port from the flags.
 	server := &Server{
-		name:  *serverName,
-		port:  *port,
-		maxId: -1,
-		clock: 0,
+		name:    *serverName,
+		port:    *port,
+		maxId:   -1,
+		clock:   0,
+		subStrm: make(map[string]gRPC.Template_SubscribeServer),
 	}
 
 	gRPC.RegisterTemplateServer(grpcServer, server) //Registers the server to the gRPC server.
@@ -85,16 +88,54 @@ func launchServer() {
 func (s *Server) Join(ctx context.Context, joinrequest *gRPC.Empty) (*gRPC.Lamport, error) {
 	s.mutex.Lock()
 	s.maxId++
+	s.clock++
+	s.mutex.Unlock()
 
 	giveId := s.maxId
-	if int(giveId) > len(idArray) {
-
+	if int(giveId) >= len(idArray) {
+		return &gRPC.Lamport{Id: "", Clock: s.clock, Content: "Too many users are already connected, try another time"}, nil
+	} else {
+		ack := &gRPC.Lamport{Id: idArray[giveId], Clock: s.clock, Content: fmt.Sprintf("Mr. %s has joined", idArray[giveId])}
+		s.NotifyAll(ack.Content)
+		return ack, nil
 	}
-	defer s.mutex.Unlock()
-	return &gRPC.Lamport{Id: "", Clock: s.clock, Content: "invalid username"}, nil
 }
 
-func notifyAll() {
+func (s *Server) Send(ctx context.Context, message *gRPC.Lamport) (*gRPC.Empty, error) {
+	s.mutex.Lock()
+	s.clock = max(s.clock, message.Clock) + 1
+	s.mutex.Unlock()
+
+	s.NotifyAll(message.Content)
+	return &gRPC.Empty{}, nil
+}
+
+func (s *Server) NotifyAll(message string) {
+	s.Print(&gRPC.Lamport{Id: "S", Clock: s.clock, Content: message})
+	s.mutex.Lock()
+	log.Println(len(s.subStrm))
+	for _, stream := range s.subStrm {
+		s.clock++
+		stream.Send(&gRPC.Lamport{Id: "S", Clock: int32(s.clock), Content: message})
+	}
+	s.mutex.Unlock()
+}
+
+// https://github.com/itisbsg/grpc-push-notif/blob/master/client/client.go
+func (s *Server) Subscribe(stream gRPC.Template_SubscribeServer) error {
+	for {
+		client, err := stream.Recv()
+		log.Println("subbbeddd")
+		
+		if err == io.EOF {
+			return nil
+		}
+		
+		if err != nil {
+			return err
+		}
+		s.subStrm[client.Id] = stream
+	}
 }
 
 // sets the logger to use a log.txt file instead of the console
@@ -113,6 +154,16 @@ func setLog() {
 	log.SetOutput(f)
 }
 
-func updateClock() {
+func (s *Server) Print(msg *gRPC.Lamport) {
+	s.mutex.Lock()
+	s.clock = int32(msg.Clock) + 1
+	log.Printf("%s (S, %d)\n", msg.Content, s.clock)
+	s.mutex.Unlock()
+}
 
+func max(a int32, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
 }
