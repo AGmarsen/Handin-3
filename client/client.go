@@ -38,7 +38,10 @@ func main() {
 	//connect to server and close the connection when program closes
 	fmt.Println("--- join Server ---")
 	ConnectToServer()
-	defer ServerConn.Close()
+	defer func () {
+		send("Mr")
+		ServerConn.Close()
+	}()
 
 	joinServer()
 	go subscribe()
@@ -47,10 +50,8 @@ func main() {
 	parseInput()
 }
 
-// connect to server
 func ConnectToServer() {
 
-	//dial options
 	//the server is not using TLS, so we use insecure credentials
 	//(should be fine for local testing but not in the real world)
 	var opts []grpc.DialOption
@@ -77,19 +78,23 @@ func ConnectToServer() {
 
 func parseInput() {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Welcome to the chat!")
-	fmt.Println("--------------------")
+	log.Println("Welcome to the chat!")
+	log.Println("--------------------")
 
 	//Infinite loop to listen for clients input.
 	for {
-		fmt.Print("-> ")
-
 		//Read input into var input and any errors into err
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			log.Fatal(err)
 		}
-		input = strings.TrimSpace(input) //Trim input
+		pre := "Mr. " + id + ": "
+		input = strings.TrimSpace(input)
+
+		if (len(input) > 128) {
+			log.Println("Message must not exceed 128 characters")
+			continue
+		}
 
 		if !conReady(server) {
 			log.Printf("Client %s: something was wrong with the connection to the server :(", *clientsName)
@@ -98,7 +103,7 @@ func parseInput() {
 
 		//Convert string to int64, return error if the int is larger than 32bit or not a number
 		if err == nil {
-			send(input)
+			send(pre + input)
 		} else {
 			log.Fatal(err)
 		}
@@ -106,6 +111,7 @@ func parseInput() {
 }
 
 func joinServer() {
+	log.Printf("Attempt to join server (?, %d)\n", clock) //no id given yet, hence '?'
 	response, err := server.Join(context.Background(), &gRPC.Empty{})
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -119,17 +125,18 @@ func joinServer() {
 	}
 }
 
-//https://github.com/itisbsg/grpc-push-notif/blob/master/client/client.go
+// https://github.com/itisbsg/grpc-push-notif/blob/master/client/client.go
 func subscribe() {
-	mutex.Lock()
 	clock++
-	mutex.Unlock()
+	log.Printf("Open stream to server (%s, %d)\n", id, clock)
 	stream, err := server.Subscribe(context.Background()) //open stream
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	stream.Send(&gRPC.Lamport{Id: id, Clock: clock})
-	for {
+	clock++
+	log.Printf("Contact server about my presence (%s, %d)\n", id, clock)
+	stream.Send(&gRPC.Lamport{Id: id, Clock: clock}) //send one message for server to react to
+	for { //start receiving 
 		rec, er := stream.Recv()
 		if er == io.EOF {
 			break
@@ -158,7 +165,7 @@ func conReady(s gRPC.TemplateClient) bool {
 func print(msg *gRPC.Lamport) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	clock = max (msg.Clock, clock) + 1
+	clock = max(msg.Clock, clock) + 1
 	log.Printf("%s (%s, %d)\n", msg.Content, id, clock)
 }
 
