@@ -75,8 +75,6 @@ func ConnectToServer() {
 
 func parseInput() {
 	reader := bufio.NewReader(os.Stdin)
-	log.Println("Welcome to the chat!")
-	log.Println("--------------------")
 
 	//Infinite loop to listen for clients input.
 	for {
@@ -136,7 +134,9 @@ func subscribe() {
 	clock++
 	log.Printf("Contact server about my presence (%s, %d)\n", id, clock)
 	stream.Send(&gRPC.Lamport{Id: id, Clock: clock}) //send one message for server to react to
-	for {                                            //Infinite loop that receives updates from server
+	log.Println("Welcome to the chat!")
+	fmt.Println("--------------------")
+	for { //Infinite loop that receives updates from server
 		rec, er := stream.Recv()
 		if er == io.EOF {
 			break
@@ -169,7 +169,8 @@ func print(msg *gRPC.Lamport) {
 	defer mutex.Unlock()
 
 	clock = max(msg.Clock, clock) + 1
-	log.Printf("\r%s (%s, %d)\n", msg.Content, id, clock)
+	fmt.Printf("\r") //overwrites unsent text. (It is still saved tho. Having in and out in the same terminal is cursed)
+	log.Printf("%s (%s, %d)\n", msg.Content, id, clock)
 }
 
 func max(a int32, b int32) int32 {
