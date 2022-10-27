@@ -38,15 +38,12 @@ func main() {
 	//connect to server and close the connection when program closes
 	fmt.Println("--- join Server ---")
 	ConnectToServer()
-	defer func () {
-		send("Mr")
-		ServerConn.Close()
-	}()
+	defer ServerConn.Close()
 
-	joinServer()
-	go subscribe()
+	joinServer()   //Attempt to get accepted into the chat and receive an Id
+	go subscribe() //listen for messages from the server
 
-	//start the biding
+	//Start receiving input from server
 	parseInput()
 }
 
@@ -85,14 +82,23 @@ func parseInput() {
 	for {
 		//Read input into var input and any errors into err
 		input, err := reader.ReadString('\n')
+		if err == io.EOF {
+			mutex.Lock()
+			defer mutex.Unlock()
+			clock++
+			log.Fatalf("Connection closed (%s, %d)", id, clock)
+			break //fatal exits but this break stops go from complaining about defer in an infinite loop
+		}
 		if err != nil {
 			log.Fatal(err)
 		}
-		pre := "Mr. " + id + ": "
+		pre := "Mr. " + id + ": " //the string that goes before each message
 		input = strings.TrimSpace(input)
 
-		if (len(input) > 128) {
+		if len(input) > 128 {
 			log.Println("Message must not exceed 128 characters")
+			continue
+		} else if len(input) == 0 {
 			continue
 		}
 
@@ -100,13 +106,7 @@ func parseInput() {
 			log.Printf("Client %s: something was wrong with the connection to the server :(", *clientsName)
 			continue
 		}
-
-		//Convert string to int64, return error if the int is larger than 32bit or not a number
-		if err == nil {
-			send(pre + input)
-		} else {
-			log.Fatal(err)
-		}
+		send(pre + input)
 	}
 }
 
@@ -117,7 +117,7 @@ func joinServer() {
 		log.Fatalf("%v", err)
 		return
 	}
-	if response.Id == "" {
+	if response.Id == "" { //happens if server has reached max amount of clients
 		log.Fatal(response.Content)
 	} else {
 		id = response.Id
@@ -136,7 +136,7 @@ func subscribe() {
 	clock++
 	log.Printf("Contact server about my presence (%s, %d)\n", id, clock)
 	stream.Send(&gRPC.Lamport{Id: id, Clock: clock}) //send one message for server to react to
-	for { //start receiving 
+	for {                                            //Infinite loop that receives updates from server
 		rec, er := stream.Recv()
 		if er == io.EOF {
 			break
@@ -148,10 +148,12 @@ func subscribe() {
 	}
 }
 
-func send(message string) {
+func send(message string) { //here we send our messages to the server
 	mutex.Lock()
 	defer mutex.Unlock()
-	_, err := server.Send(context.Background(), &gRPC.Lamport{Id: id, Clock: int32(clock) + 1, Content: message})
+	clock++
+	log.Printf("Message sent (%s, %d)", id, clock)
+	_, err := server.Send(context.Background(), &gRPC.Lamport{Id: id, Clock: clock, Content: message})
 	if err != nil {
 		log.Printf("%v", err)
 	}
@@ -165,8 +167,9 @@ func conReady(s gRPC.TemplateClient) bool {
 func print(msg *gRPC.Lamport) {
 	mutex.Lock()
 	defer mutex.Unlock()
+
 	clock = max(msg.Clock, clock) + 1
-	log.Printf("%s (%s, %d)\n", msg.Content, id, clock)
+	log.Printf("\r%s (%s, %d)\n", msg.Content, id, clock)
 }
 
 func max(a int32, b int32) int32 {
