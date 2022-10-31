@@ -83,7 +83,7 @@ func launchServer() {
 //When a new client sends a join request
 func (s *Server) Join(ctx context.Context, joinrequest *gRPC.Empty) (*gRPC.Lamport, error) {
 	s.mutex.Lock()
-	s.clock++
+	s.clock++ //join requests send Empty{} so the clock of that client is always 0
 	giveId := ""
 	
 	for _, i := range idArray { //for all id's A, B, C ... 
@@ -97,12 +97,12 @@ func (s *Server) Join(ctx context.Context, joinrequest *gRPC.Empty) (*gRPC.Lampo
 	if giveId == "" { //if all id's were occupied
 		defer s.mutex.Unlock()
 		log.Printf("User denied due to maximum capacity reached (S, %d)\n", s.clock)
-		return &gRPC.Lamport{Id: "", Clock: s.clock, Content: "Too many users are already connected, try another time"}, nil
+		return &gRPC.Lamport{Id: "", Clock: s.clock + 1, Content: "Too many users are already connected, try another time"}, nil
 	} else {
 		defer s.mutex.Unlock()
 		log.Printf("New user accepted (S, %d)\n", s.clock)
-		ack := &gRPC.Lamport{Id: giveId, Clock: s.clock, Content: fmt.Sprintf("Mr. %s has joined", giveId)}
-		s.NotifyAll(ack.Content)
+		ack := &gRPC.Lamport{Id: giveId, Clock: s.clock + 1, Content: fmt.Sprintf("Mr. %s has joined", giveId)}
+		s.NotifyAll(ack.Content) //clock is incremented here in s.Print()
 		return ack, nil
 	}
 }
